@@ -34,7 +34,7 @@ def main():
         mins = int((now - datetime.fromisoformat(state["last_time"])).total_seconds() // 60)
         gap = f"，距离最后一条消息 {mins} 分钟" if mins > 0 else "，最后一条消息就在刚刚"
 
-    print(f"""【上下文刚刚被自动压缩了——这不是新对话】
+    print(f"""【上下文刚刚被压缩了——这不是新对话】
 现在是 {now.strftime('%Y-%m-%d %H:%M')}{gap}。你和小晨从 {first or '?'} 起就一直在同一个会话里聊着，压缩只是把前面的内容缩成了摘要。
 
 接下来要做到小晨完全感觉不到压缩：
