@@ -2,7 +2,7 @@
 
 | 文件 | 钩子 | 作用 |
 |---|---|---|
-| `pre_compact_save.py` | PreCompact | 压缩前把最近约 1.5 万字原文对话存到 `~/.claude/compact-memory/` |
+| `pre_compact_save.py` | PreCompact | 压缩前把最近 20 轮（最多约 1 万字）原文对话存到 `~/.claude/compact-memory/` |
 | `post_compact_restore.py` | SessionStart (compact) | 压缩后把原文读回上下文，明确告诉小克"这不是新对话、别重新打招呼"，并清空召回去重记录 |
 | `check_hooks.py` | — | 装完跑一次，检查有没有别的开窗钩子在压缩后也会触发 |
 | `ob_recall.py` | UserPromptSubmit | 每句话挑关键词去 OB 搜，把命中的记忆塞进上下文 |
@@ -48,4 +48,4 @@
 
 ## 调整
 
-各脚本顶部的常量：条数、字数、超时。`ob_recall.py` 里的 `STOPWORDS` 是不拿去搜的词。
+各脚本顶部的常量：轮数、字数、超时。Telegram 上用 reply 工具发的回复也会存成小克说的话，分段发的会合成一条。`ob_recall.py` 里的 `STOPWORDS` 是不拿去搜的词。
