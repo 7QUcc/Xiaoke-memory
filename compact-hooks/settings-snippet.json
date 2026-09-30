@@ -14,6 +14,13 @@
           { "type": "command", "command": "python3 ~/.claude/hooks/post_compact_restore.py" }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/ob_recall.py", "timeout": 6 }
+        ]
+      }
     ]
   }
 }

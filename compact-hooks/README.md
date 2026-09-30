@@ -1,21 +1,47 @@
-# 防断片钩子
+# 防断片 + 自动记忆召回钩子
 
-压缩前把最近 30 条原文对话存到 `~/.claude/compact-memory/last_context.md`，压缩后自动读回上下文。
+| 文件 | 钩子 | 作用 |
+|---|---|---|
+| `pre_compact_save.py` | PreCompact | 压缩前把最近 30 条原文对话存到 `~/.claude/compact-memory/last_context.md` |
+| `post_compact_restore.py` | SessionStart (compact) | 压缩后把那段原文读回上下文，并清空召回去重记录 |
+| `ob_recall.py` | UserPromptSubmit | 每句话挑关键词去 OB 搜，把命中的记忆塞进上下文 |
+| `userdict.txt` | — | 分词自定义词典（鸡公煲、黄蜀郎……），新词往里加 |
 
-## 安装（在跑 Prism 的那台机器上）
+## 安装（在跑 Prism 的那台服务器上）
 
-1. 把两个脚本放到 `~/.claude/hooks/`：
+1. 装分词库：
+   ```
+   pip install jieba
+   ```
+   如果报 `install_layout` 错误，改用 `SETUPTOOLS_USE_DISTUTILS=stdlib pip install jieba`。
+2. 把脚本和词典放到 `~/.claude/hooks/`：
    ```
    mkdir -p ~/.claude/hooks
-   cp pre_compact_save.py post_compact_restore.py ~/.claude/hooks/
+   cp *.py userdict.txt ~/.claude/hooks/
    ```
-2. 把 `settings-snippet.json` 里的 `hooks` 合并进 `~/.claude/settings.json`（已有 `hooks` 就把两项加进去，别整个覆盖）。
-3. 重启 Claude Code（Prism 里的 tmux 会话）。
+3. 把 `settings-snippet.json` 里的 `hooks` 合并进 `~/.claude/settings.json`（已有 `hooks` 就把几项加进去，别整个覆盖）。
+4. 重启 Claude Code（Prism 里的 tmux 会话）。
 
-## 验证
+## OB 地址
 
-手动打一次 `/compact`，看 `~/.claude/compact-memory/last_context.md` 有没有生成；压缩完问小克"刚才我们在聊什么"。
+`ob_recall.py` 会自动从 `.mcp.json` 或 `~/.claude.json` 里找名为 `ob` 的 MCP 服务器（要求是 http 类型，有 `url`）。
+名字不叫 `ob`，或者想直接指定，就设环境变量：`OB_SERVER_NAME=名字` 或 `OB_MCP_URL=http://127.0.0.1:端口/mcp`。
+
+## 召回规则
+
+- 少于 4 个字的话、`/` 开头的命令，不查
+- jieba 挑最多 3 个关键词，**每个词单独搜**（OB 整句或多词一起搜经常搜不到）
+- 用 `mode=automatic`，剪掉 OB 附带的"忽然想起来"随机联想，只要真正命中的
+- 每次最多塞 3 条，每条截到 220 字（长日记会截关键词附近那段）
+- 同一个窗口里召回过的不再重复给；压缩后清零
+- 3.5 秒内没查完就这次不给，出错也静默跳过
+
+## 验证 / 排查
+
+- 发一句带具体事物的话（比如"鸡公煲"），问小克想起了什么
+- 日志：`~/.claude/recall-state/recall.log`，每句一行：关键词、命中几条、用了几秒
+- 压缩：手动 `/compact`，看 `~/.claude/compact-memory/last_context.md` 有没有生成
 
 ## 调整
 
-`pre_compact_save.py` 顶部：`KEEP` 是保留条数，`MAX_CHARS` 是单条最长字数。
+各脚本顶部的常量：条数、字数、超时。`ob_recall.py` 里的 `STOPWORDS` 是不拿去搜的词。

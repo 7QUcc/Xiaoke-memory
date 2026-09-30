@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # 压缩后：把压缩前存下的原文对话打印出来，Claude Code 会把它塞进上下文
+import glob
 import os
 
-path = os.path.expanduser("~/.claude/compact-memory/last_context.md")
+# 压缩后之前召回过的记忆也被压掉了，清空去重记录，让它们可以再被想起来
+for f in glob.glob(os.path.expanduser("~/.claude/recall-state/*.json")):
+    os.remove(f)
+
+path =os.path.expanduser("~/.claude/compact-memory/last_context.md")
 if os.path.exists(path):
     with open(path, encoding="utf-8") as f:
         saved = f.read()
