@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/pre_compact_save.py" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/post_compact_restore.py" }
+        ]
+      }
+    ]
+  }
+}
