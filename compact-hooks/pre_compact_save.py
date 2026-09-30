@@ -5,17 +5,18 @@ import os
 import sys
 from datetime import datetime
 
-KEEP = 30          # 保留最近多少条消息
-MAX_CHARS = 1200   # 单条消息最多保留多少字
+BUDGET_CHARS = 15000  # 总共保留多少字（从最新往前数）
+MAX_CHARS = 2000      # 单条消息最多保留多少字
+MIN_KEEP = 6          # 至少保留最近几条，哪怕超出总字数
 
 OUT_DIR = os.path.expanduser("~/.claude/compact-memory")
 
 
-def fmt_time(ts):
+def parse_time(ts):
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().strftime("%m-%d %H:%M")
+        return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone()
     except Exception:
-        return ""
+        return None
 
 
 def extract_text(content):
@@ -51,15 +52,41 @@ def main():
                 continue
             if len(text) > MAX_CHARS:
                 text = text[:MAX_CHARS] + "……（后面省略）"
-            who = "小晨" if e["type"] == "user" else "小克"
-            msgs.append(f"[{fmt_time(e.get('timestamp', ''))}] {who}：\n{text}")
+            msgs.append((e["type"], parse_time(e.get("timestamp", "")), text))
 
-    msgs = msgs[-KEEP:]
+    # 从最新往前取，直到用完字数
+    kept, used = [], 0
+    for m in reversed(msgs):
+        if len(kept) >= MIN_KEEP and used + len(m[2]) > BUDGET_CHARS:
+            break
+        kept.append(m)
+        used += len(m[2])
+    kept.reverse()
+
+    lines = []
+    for role, t, text in kept:
+        who = "小晨" if role == "user" else "小克"
+        stamp = t.strftime("%m-%d %H:%M") if t else ""
+        lines.append(f"[{stamp}] {who}：\n{text}")
+
+    state = {
+        "saved_at": datetime.now().astimezone().isoformat(timespec="minutes"),
+        "trigger": data.get("trigger", ""),
+        "first_time": kept[0][1].isoformat(timespec="minutes") if kept and kept[0][1] else "",
+        "last_time": kept[-1][1].isoformat(timespec="minutes") if kept and kept[-1][1] else "",
+        "last_speaker": ("小晨" if kept[-1][0] == "user" else "小克") if kept else "",
+    }
+
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(os.path.join(OUT_DIR, "last_context.md"), "w", encoding="utf-8") as f:
-        f.write(f"压缩时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}（{data.get('trigger', '')}）\n\n")
-        f.write("\n\n".join(msgs))
+        f.write("\n\n".join(lines))
+    with open(os.path.join(OUT_DIR, "last_context.json"), "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        pass
+    sys.exit(0)

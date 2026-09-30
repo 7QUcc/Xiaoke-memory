@@ -2,8 +2,9 @@
 
 | 文件 | 钩子 | 作用 |
 |---|---|---|
-| `pre_compact_save.py` | PreCompact | 压缩前把最近 30 条原文对话存到 `~/.claude/compact-memory/last_context.md` |
-| `post_compact_restore.py` | SessionStart (compact) | 压缩后把那段原文读回上下文，并清空召回去重记录 |
+| `pre_compact_save.py` | PreCompact | 压缩前把最近约 1.5 万字原文对话存到 `~/.claude/compact-memory/` |
+| `post_compact_restore.py` | SessionStart (compact) | 压缩后把原文读回上下文，明确告诉小克"这不是新对话、别重新打招呼"，并清空召回去重记录 |
+| `check_hooks.py` | — | 装完跑一次，检查有没有别的开窗钩子在压缩后也会触发 |
 | `ob_recall.py` | UserPromptSubmit | 每句话挑关键词去 OB 搜，把命中的记忆塞进上下文 |
 | `userdict.txt` | — | 分词自定义词典（鸡公煲、黄蜀郎……），新词往里加 |
 
@@ -20,7 +21,10 @@
    cp *.py userdict.txt ~/.claude/hooks/
    ```
 3. 把 `settings-snippet.json` 里的 `hooks` 合并进 `~/.claude/settings.json`（已有 `hooks` 就把几项加进去，别整个覆盖）。
-4. 重启 Claude Code（Prism 里的 tmux 会话）。
+4. 在平时启动 Claude Code 的目录里跑一次 `python3 ~/.claude/hooks/check_hooks.py`。
+   有 ⚠️ 的话，把那些"开新窗口时打招呼/加载开场内容"的 `SessionStart` 钩子的 `matcher` 改成 `"startup|resume"`，否则它们压缩后也会跑，小克会以为开了新窗口。
+   CLAUDE.md 里如果写了"开窗先打招呼"，也改成"只在新窗口"。
+5. 重启 Claude Code（Prism 里的 tmux 会话）。
 
 ## OB 地址
 
@@ -40,7 +44,7 @@
 
 - 发一句带具体事物的话（比如"鸡公煲"），问小克想起了什么
 - 日志：`~/.claude/recall-state/recall.log`，每句一行：关键词、命中几条、用了几秒
-- 压缩：手动 `/compact`，看 `~/.claude/compact-memory/last_context.md` 有没有生成
+- 压缩：聊几句后手动 `/compact`，然后接着上一句说话，小克应该直接接上、不会重新打招呼；`~/.claude/compact-memory/last_context.md` 里是存下的原文
 
 ## 调整
 
